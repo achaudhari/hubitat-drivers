@@ -1,0 +1,13 @@
+{
+    "author": "Ashish Chaudhari",
+    "gitHubUrl": "https://github.com/achaudhari/hubitat-drivers",
+    "packages": [
+      {
+        "id": "7d4324b1-4301-431c-97df-c38b6d0df683",
+        "name": "Webcore Email Notification Device",
+        "category": "Integrations",
+        "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/email-notification-device/packageManifest.json",
+        "description": "Webcore Email Notification Device"
+      }
+    ]
+  }%
