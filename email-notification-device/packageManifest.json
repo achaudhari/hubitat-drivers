@@ -1,0 +1,17 @@
+{
+  "packageName": "Webcore Email Notification Device",
+  "author": "Ashish Chaudhari",
+  "version": "1.0",
+  "minimumHEVersion": "2.3.0",
+  "dateReleased": "2022-01-15",
+  "licenseFile": "https://github.com/achaudhari/hubitat-drivers/blob/main/LICENSE",
+  "drivers": [
+    {
+      "id": "4824d286-d733-4761-88f7-e47829c63f38",
+      "name": "Email Notification Device",
+      "namespace": "achaudhari",
+      "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/email-notification-device/emailNotificationDevice.groovy",
+      "required": true
+    }
+  ]
+}
