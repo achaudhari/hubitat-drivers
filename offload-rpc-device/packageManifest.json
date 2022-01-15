@@ -1,0 +1,16 @@
+{
+  "packageName": "Processing Offload RPC Device",
+  "author": "Ashish Chaudhari",
+  "version": "1.0",
+  "minimumHEVersion": "2.3.0",
+  "dateReleased": "2022-01-15",
+  "drivers": [
+    {
+      "id": "8239f0da-92d9-437f-bb80-4753d234f713",
+      "name": "Processing Offload RPC Device",
+      "namespace": "achaudhari",
+      "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/offload-rpc-device/offloadRpcDevice.groovy",
+      "required": true
+    }
+  ]
+}

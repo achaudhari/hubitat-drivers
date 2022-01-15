@@ -1,0 +1,16 @@
+{
+  "packageName": "Ping Presence Sensor",
+  "author": "Ashish Chaudhari",
+  "version": "1.0",
+  "minimumHEVersion": "2.3.0",
+  "dateReleased": "2022-01-15",
+  "drivers": [
+    {
+      "id": "5a3cc243-243e-417e-9d2f-544ec0eaf67d",
+      "name": "Ping Presence Sensor",
+      "namespace": "achaudhari",
+      "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/ping-presence-sensor/pingPresenceSensor.groovy",
+      "required": true
+    }
+  ]
+}
