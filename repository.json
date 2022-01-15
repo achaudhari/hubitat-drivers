@@ -8,6 +8,20 @@
         "category": "Integrations",
         "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/email-notification-device/packageManifest.json",
         "description": "Webcore Email Notification Device"
+      },
+      {
+        "id": "80eaf888-71e0-4f8b-b0d7-4bd8feb97749",
+        "name": "Processing Offload RPC Device",
+        "category": "Integrations",
+        "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/offload-rpc-device/packageManifest.json",
+        "description": "Processing Offload RPC Device"
+      },
+      {
+        "id": "fccf8bf1-0bcc-47dd-a7fb-7127902390e2",
+        "name": "Ping Presence Sensor",
+        "category": "Integrations",
+        "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/ping-presence-sensor/packageManifest.json",
+        "description": "Ping Presence Sensor"
       }
     ]
   }
