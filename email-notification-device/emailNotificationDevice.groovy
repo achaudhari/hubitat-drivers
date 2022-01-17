@@ -1,5 +1,5 @@
 /*
- * Webcore Email Notification Device
+ * Email Notification Device
  *
  * Copyright 2022 Ashish Chaudhari
  *
@@ -19,10 +19,18 @@
 metadata {
     definition (name: "Email Notification Device", namespace: "achaudhari", author: "Ashish Chaudhari") {
         capability "Notification"
+
+        attribute "lastSubject", "string"
+        attribute "lastBody", "string"
+        attribute "respStatus", "number"
+        attribute "respErrMsg", "string"
+        attribute "respTimestamp", "string"
+
     }   
     preferences {
         input(name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: true)
-        input(name: "baseUri", type: "str", title: "Base URI for email piston")
+        input(name: "emailAddr", type: "str", title: "Email address to send to")
+        input(name: "remoteUri", type: "str", title: "Offload Device URI")
     }
 }
 
@@ -35,9 +43,32 @@ void updated() {
 }
 
 void httpResponseHandler(resp, data) {
+    respStatus = -1
+    respResult = ""
     if (resp.status >= 300) {
-        log.warn "POST Status = ${resp.status}, Data = ${resp.getData()}"
+        respResult = "HTTP POST Status = ${resp.status}"
+        log.error respResult
+    } else {
+        try {
+            respStatus = -2
+            resp_blob = parseJson(resp.getData())
+            if (resp_blob.containsKey("error")) {
+                respStatus = resp_blob.error.code
+                respResult = "${resp_blob.error.message}, ${resp_blob.error.data}"
+                log.error "JSONRPC Error = ${resp_blob.error}}"
+            } else if (resp_blob.containsKey("result")) {
+                respStatus = 0
+                respResult = resp_blob.result
+                log.debug "JSONRPC Success. Result = ${resp_blob.result}}"
+            }
+        } catch (groovy.json.JsonException ex) {
+            log.warn "Response JSON was malformed"
+        }
     }
+    sendEvent(name:"respStatus", value:respStatus)
+    sendEvent(name:"respErrMsg", value:respResult)
+    def dateTime = new Date()
+    sendEvent(name: "respTimestamp", value: dateTime.format("yyyy-MM-dd HH:mm:ss"), isStateChange: true)
 }
 
 void deviceNotification(notificationText) {
@@ -58,13 +89,16 @@ void deviceNotification(notificationText) {
         log.warn "Notification JSON was malformed"
     }
 
-    fullUri = baseUri + "&subject=${java.net.URLEncoder.encode(subject, "UTF-8")}&body=${java.net.URLEncoder.encode(body, "UTF-8")}"
-    Map params = [
-        uri: fullUri,
+    rpcParams = "[\"${emailAddr}\", \"${subject}\", \"${body}\"]"
+    sendEvent(name:"subject", value:subject)
+    sendEvent(name:"body", value:body)
+    Map postParams = [
+        uri: remoteUri,
         contentType: "application/json",
-        timeout: 15
+        requestContentType: 'application/json',
+        body: ["jsonrpc": "2.0", "id": 0, "method": "email_text", "params": parseJson(rpcParams)],
+        timeout: 10
     ]
-    asynchttpPost("httpResponseHandler", params)
-    if (logEnable) log.debug "POST sent to ${fullUri}"
+    asynchttpPost("httpResponseHandler", postParams)
+    if (logEnable) log.debug "POST sent to ${remoteUri}"
 }
-

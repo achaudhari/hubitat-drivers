@@ -4,10 +4,10 @@
     "packages": [
       {
         "id": "7d4324b1-4301-431c-97df-c38b6d0df683",
-        "name": "Webcore Email Notification Device",
+        "name": "Email Notification Device",
         "category": "Integrations",
         "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/email-notification-device/packageManifest.json",
-        "description": "Webcore Email Notification Device"
+        "description": "Email Notification Device"
       },
       {
         "id": "80eaf888-71e0-4f8b-b0d7-4bd8feb97749",
