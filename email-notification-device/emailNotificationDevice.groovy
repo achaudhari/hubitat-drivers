@@ -34,41 +34,12 @@ metadata {
     }
 }
 
+#include offrpclib.offrpclib_v1
+
 void installed() {
-    log.debug "installed()"
 }
 
 void updated() {
-    log.debug "updated()"
-}
-
-void httpResponseHandler(resp, data) {
-    respStatus = -1
-    respResult = ""
-    if (resp.status >= 300) {
-        respResult = "HTTP POST Status = ${resp.status}"
-        log.error respResult
-    } else {
-        try {
-            respStatus = -2
-            resp_blob = parseJson(resp.getData())
-            if (resp_blob.containsKey("error")) {
-                respStatus = resp_blob.error.code
-                respResult = "${resp_blob.error.message}, ${resp_blob.error.data}"
-                log.error "JSONRPC Error = ${resp_blob.error}}"
-            } else if (resp_blob.containsKey("result")) {
-                respStatus = 0
-                respResult = resp_blob.result
-                log.debug "JSONRPC Success. Result = ${resp_blob.result}}"
-            }
-        } catch (groovy.json.JsonException ex) {
-            log.warn "Response JSON was malformed"
-        }
-    }
-    sendEvent(name:"respStatus", value:respStatus)
-    sendEvent(name:"respErrMsg", value:respResult)
-    def dateTime = new Date()
-    sendEvent(name: "respTimestamp", value: dateTime.format("yyyy-MM-dd HH:mm:ss"), isStateChange: true)
 }
 
 void deviceNotification(notificationText) {
@@ -88,17 +59,18 @@ void deviceNotification(notificationText) {
     } catch (groovy.json.JsonException ex) {
         log.warn "Notification JSON was malformed"
     }
+    sendEvent(name:"lastSubject", value:subject)
+    sendEvent(name:"lastBody", value:body)
 
-    rpcParams = "[\"${emailAddr}\", \"${subject}\", \"${body}\"]"
-    sendEvent(name:"subject", value:subject)
-    sendEvent(name:"body", value:body)
-    Map postParams = [
-        uri: remoteUri,
-        contentType: "application/json",
-        requestContentType: 'application/json',
-        body: ["jsonrpc": "2.0", "id": 0, "method": "email_text", "params": parseJson(rpcParams)],
-        timeout: 10
-    ]
-    asynchttpPost("httpResponseHandler", postParams)
-    if (logEnable) log.debug "POST sent to ${remoteUri}"
+    retVal = rpcCall(remoteUri, "email_text", [emailAddr, subject, body], 10)
+    if (retVal["respStatus"] == 0) {
+        sendEvent(name: "respErrMsg", value: "")
+        if (logEnable) log.debug "Notification sent: (subject = ${subject}, body = ${body})"
+    } else {
+        sendEvent(name: "respErrMsg", value: retVal["respResult"])
+        log.error "Could not send notification: (subject = ${subject}, body = ${body})"
+    }
+
+    sendEvent(name: "respStatus", value: retVal["respStatus"])
+    sendEvent(name: "respTimestamp", value: retVal["respTimestamp"], isStateChange: true)
 }
