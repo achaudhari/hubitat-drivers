@@ -1,27 +1,34 @@
 {
-    "author": "Ashish Chaudhari",
-    "gitHubUrl": "https://github.com/achaudhari/hubitat-drivers",
-    "packages": [
-      {
-        "id": "7d4324b1-4301-431c-97df-c38b6d0df683",
-        "name": "Email Notification Device",
-        "category": "Integrations",
-        "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/email-notification-device/packageManifest.json",
-        "description": "Email Notification Device"
-      },
-      {
-        "id": "80eaf888-71e0-4f8b-b0d7-4bd8feb97749",
-        "name": "Processing Offload RPC Device",
-        "category": "Integrations",
-        "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/offload-rpc-device/packageManifest.json",
-        "description": "Processing Offload RPC Device"
-      },
-      {
-        "id": "fccf8bf1-0bcc-47dd-a7fb-7127902390e2",
-        "name": "Ping Presence Sensor",
-        "category": "Integrations",
-        "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/ping-presence-sensor/packageManifest.json",
-        "description": "Ping Presence Sensor"
-      }
-    ]
-  }
+  "author": "Ashish Chaudhari",
+  "gitHubUrl": "https://github.com/achaudhari/hubitat-drivers",
+  "packages": [
+    {
+      "id": "7d4324b1-4301-431c-97df-c38b6d0df683",
+      "name": "Email Notification Device",
+      "category": "Integrations",
+      "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/email-notification-device/packageManifest.json",
+      "description": "Email Notification Device"
+    },
+    {
+      "id": "80eaf888-71e0-4f8b-b0d7-4bd8feb97749",
+      "name": "Processing Offload RPC Device",
+      "category": "Integrations",
+      "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/offload-rpc-device/packageManifest.json",
+      "description": "Processing Offload RPC Device"
+    },
+    {
+      "id": "fccf8bf1-0bcc-47dd-a7fb-7127902390e2",
+      "name": "Ping Presence Sensor",
+      "category": "Integrations",
+      "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/ping-presence-sensor/packageManifest.json",
+      "description": "Ping Presence Sensor"
+    },
+    {
+      "id": "7f487fdb-82a1-4afe-9df2-0f1a71d351ab",
+      "name": "Roomba Controller",
+      "category": "Integrations",
+      "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/roomba-ctrl/packageManifest.json",
+      "description": "Roomba Controller"
+    }
+  ]
+}
