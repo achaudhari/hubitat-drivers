@@ -158,8 +158,7 @@ def push(action) {
     else
         log.error "Invalid button action: ${action}"
     if (action != "refresh")
-        runIn(3, "retrieveState")
-        runIn(10, "retrieveState")
+        runIn(5, "retrieveState")
 }
 
 def retrieveState() {

@@ -31,7 +31,7 @@ metadata {
                            [name:"timeout", type:"NUMBER", description:"Operation timeout in seconds (0 = infinite)"]]   
     }   
     preferences {
-        input(name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: true)
+        input(name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: false)
         input(name: "remoteUri", type: "str", title: "Offload Device URI")
     }
 }
