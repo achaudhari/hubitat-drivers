@@ -1,0 +1,16 @@
+{
+  "packageName": "Roomba Controller",
+  "author": "Ashish Chaudhari",
+  "version": "1.0",
+  "minimumHEVersion": "2.3.0",
+  "dateReleased": "2022-01-20",
+  "drivers": [
+    {
+      "id": "7f742c22-6230-4104-be80-194482939d3f",
+      "name": "Roomba Controller",
+      "namespace": "achaudhari",
+      "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/roomba-ctrl/roombaCtrl.groovy",
+      "required": true
+    }
+  ]
+}
