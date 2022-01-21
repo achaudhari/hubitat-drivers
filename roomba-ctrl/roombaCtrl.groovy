@@ -20,7 +20,6 @@ metadata {
     definition (name: "Roomba Controller", namespace: "achaudhari", author: "Ashish Chaudhari") {
         capability "Refresh"
 		capability "Battery"
-        capability "Switch"
 		capability "Actuator"
         capability "PushableButton"
 
@@ -37,13 +36,14 @@ metadata {
         command "resume"
         command "dock"
         command "locate"
+        command "reset"
         command "push", [[name:"action", type:"STRING"]]
     }
     preferences {
         input(name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: true)
         input(name: "remoteUri", type: "str", title: "Offload Device URI")
         input(name: "pollingEnable", type: "bool", title: "Enable state polling?", defaultValue:false)
-        input(name: "pollingInterval", type: "number", title: "Polling interval in seconds", defaultValue:0)
+        input(name: "pollingInterval", type: "number", title: "Polling interval in seconds", defaultValue:600)
     }
 }
 
@@ -51,62 +51,72 @@ metadata {
 
 def start() {
     if(logEnable) log.debug "Starting Roomba via RPC"
-    retVal = rpcCall(remoteUri, "roomba_send_cmd", ["start"], 30)
-    if (retVal["respStatus"] == 0) {
-        sendEvent(name: "switch", value: "on", isStateChange: true)
-        if(logEnable) log.debug "Roomba started"
-    } else {
+    retVal = rpcCall(remoteUri, "roomba_send_cmd", ["start"], 10)
+    rpc_status = retVal["respStatus"]
+    if (rpc_status != 0) {
         log.error "Could not start Roomba"
+        sendEvent(name: "errorMsg", value: "Status: start: RPC Err ${rpc_status}", isStateChange: true)
     }
 }
 
 def stop() {
     if(logEnable) log.debug "Stopping Roomba via RPC"
-    retVal = rpcCall(remoteUri, "roomba_send_cmd", ["stop"], 30)
-    if (retVal["respStatus"] == 0) {
-        sendEvent(name: "switch", value: "off", isStateChange: true)
-        if(logEnable) log.debug "Roomba stopped"
-    } else {
+    retVal = rpcCall(remoteUri, "roomba_send_cmd", ["stop"], 10)
+    rpc_status = retVal["respStatus"]
+    if (rpc_status != 0) {
         log.error "Could not stop Roomba"
+        sendEvent(name: "errorMsg", value: "Status: stop: RPC Err ${rpc_status}", isStateChange: true)
     }
 }
 
 def pause() {
     if(logEnable) log.debug "Pausing Roomba via RPC"
-    retVal = rpcCall(remoteUri, "roomba_send_cmd", ["pause"], 30)
-    if (retVal["respStatus"] == 0) {
-        sendEvent(name: "switch", value: "off", isStateChange: true)
-        if(logEnable) log.debug "Roomba paused"
-    } else {
+    retVal = rpcCall(remoteUri, "roomba_send_cmd", ["pause"], 10)
+    rpc_status = retVal["respStatus"]
+    if (rpc_status != 0) {
         log.error "Could not pause Roomba"
+        sendEvent(name: "errorMsg", value: "Status: pause: RPC Err ${rpc_status}", isStateChange: true)
     }
 }
 
 def resume() {
     if(logEnable) log.debug "Resuming Roomba via RPC"
-    retVal = rpcCall(remoteUri, "roomba_send_cmd", ["resume"], 30)
-    if (retVal["respStatus"] == 0) {
-        sendEvent(name: "switch", value: "on", isStateChange: true)
-        if(logEnable) log.debug "Roomba resumed"
-    } else {
+    retVal = rpcCall(remoteUri, "roomba_send_cmd", ["resume"], 10)
+    rpc_status = retVal["respStatus"]
+    if (rpc_status != 0) {
         log.error "Could not resume Roomba"
+        sendEvent(name: "errorMsg", value: "Status: resume: RPC Err ${rpc_status}", isStateChange: true)
     }
 }
 
 def dock() {
     if(logEnable) log.debug "Docking Roomba via RPC"
-    retVal = rpcCall(remoteUri, "roomba_send_cmd", ["dock"], 30)
-    if (retVal["respStatus"] == 0) {
-        sendEvent(name: "switch", value: "off", isStateChange: true)
-        if(logEnable) log.debug "Roomba is docking now"
-    } else {
+    retVal = rpcCall(remoteUri, "roomba_send_cmd", ["dock"], 10)
+    rpc_status = retVal["respStatus"]
+    if (rpc_status != 0) {
         log.error "Could not dock Roomba"
+        sendEvent(name: "errorMsg", value: "Status: dock: RPC Err ${rpc_status}", isStateChange: true)
     }
 }
 
 def locate() {
     if(logEnable) log.debug "Locating Roomba via RPC"
-    retVal = rpcCall(remoteUri, "roomba_send_cmd", ["locate"], 30)
+    retVal = rpcCall(remoteUri, "roomba_send_cmd", ["locate"], 10)
+    rpc_status = retVal["respStatus"]
+    if (rpc_status != 0) {
+        log.error "Could not locate Roomba"
+        sendEvent(name: "errorMsg", value: "Status: locate: RPC Err ${rpc_status}", isStateChange: true)
+    }
+}
+
+def reset() {
+    if(logEnable) log.debug "Reseting Roomba via RPC"
+    retVal = rpcCall(remoteUri, "roomba_send_cmd", ["reset"], 10)
+    rpc_status = retVal["respStatus"]
+    if (rpc_status != 0) {
+        log.error "Could not reset Roomba"
+        sendEvent(name: "errorMsg", value: "Status: reset: RPC Err ${rpc_status}", isStateChange: true)
+    }
 }
 
 def refresh() {
@@ -141,18 +151,22 @@ def push(action) {
         dock()
     else if (action == "locate")
         locate()
+    else if (action == "reset")
+        reset()
     else if (action == "refresh")
         refresh()
     else
         log.error "Invalid button action: ${action}"
     if (action != "refresh")
         runIn(3, "retrieveState")
+        runIn(10, "retrieveState")
 }
 
 def retrieveState() {
     if(logEnable) log.debug "Updating Roomba state"
-    retVal = rpcCall(remoteUri, "roomba_get_state", ["reduced"], 30)
-    if (retVal["respStatus"] == 0) {
+    retVal = rpcCall(remoteUri, "roomba_get_state", ["reduced"], 10)
+    rpc_status = retVal["respStatus"]
+    if (rpc_status == 0) {
         state = retVal["respResult"]
         sendEvent(name: "battery", value: state["battery"], isStateChange: true)
         sendEvent(name: "phase", value: state["phase"], isStateChange: true)
@@ -161,5 +175,7 @@ def retrieveState() {
         sendEvent(name: "binStatus", value: state["bin_status"], isStateChange: true)
         sendEvent(name: "wifiRssi", value: "RSSI " + state["wifi_rssi"] + "dB", isStateChange: true)
         sendEvent(name: "updateTimestamp", value: new Date().format("yyyy-MM-dd HH:mm:ss"), isStateChange: true)
-    }    
+    } else {
+        sendEvent(name: "errorMsg", value: "Status: refresh: RPC Err ${rpc_status}", isStateChange: true)
+    }
 }
