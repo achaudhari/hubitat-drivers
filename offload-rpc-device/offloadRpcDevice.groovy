@@ -36,11 +36,15 @@ metadata {
         command "runCmd", [[name:"method", type:"STRING", description:"RPC method to run"],
                            [name:"params", type:"STRING", description:"JSON formatted parameters"],
                            [name:"timeout", type:"NUMBER", description:"Operation timeout in seconds (0 = infinite)"]]
+        command "reboot"
+        command "shutdown"
+        command "hubSafeShutdown"
     }
     preferences {
         input(name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: false)
         input(name: "remoteUri", type: "str", title: "Offload Device URI")
         input(name: "checkInterval", type: "number", title: "Check interval in seconds (0 = disabled)", defaultValue: 0)
+        input(name: "authCookie", type: "str", title: "Authentication Cookie")
     }
 }
 
@@ -69,13 +73,16 @@ def heartbeatLoop() {
 }
 
 def ping() {
-    retVal = rpcCall(remoteUri, "echo", ["heartbeat"], 10)
-    if (retVal["respStatus"] == 0)
-        sendEvent(name: "presence", value: "present")
-    else
-        sendEvent(name: "presence", value: "not present")
-    sendEvent(name:"lastUpdated", value:(new Date().format("yyyy-MM-dd HH:mm:ss")))
-    if (logEnable) log.debug "ping: Offload RPC server is up"
+    try {
+        retVal = rpcCall(remoteUri, "echo", ["heartbeat"], 10)
+        if (retVal["respStatus"] == 0)
+            sendEvent(name: "presence", value: "present")
+        else
+            sendEvent(name: "presence", value: "not present")
+        sendEvent(name:"lastUpdated", value:(new Date().format("yyyy-MM-dd HH:mm:ss")))
+    } catch (Exception e) {
+        log.warn "Heartbeat ping failed but continuing loop..."
+    }
 }
 
 def runCmd(method, params, timeout) {
@@ -106,4 +113,39 @@ def runCmd(method, params, timeout) {
     }
     sendEvent(name: "motion", value: "inactive", isStateChange: true)
     sendEvent(name: "lastUpdated", value:(new Date().format("yyyy-MM-dd HH:mm:ss")))
+}
+
+def reboot() {
+    log.info "Rebooting offload device"
+    retVal = rpcCall(remoteUri, "reboot", [authCookie], 10)
+    if (retVal["respStatus"] == 0) {
+        log.info "Reboot request sent successfully"
+        sendEvent(name: "motion", value: "inactive")
+        sendEvent(name: "presence", value: "not present")
+        runIn(60, "initialize")
+    } else {
+        log.error "Reboot request failed"
+    }
+}
+
+def shutdown() {
+    log.info "Shutting down offload device"
+    retVal = rpcCall(remoteUri, "shutdown", [authCookie], 10)
+    if (retVal["respStatus"] == 0) {
+        log.info "Shutdown request sent successfully"
+        sendEvent(name: "motion", value: "inactive")
+        sendEvent(name: "presence", value: "not present")
+    } else {
+        log.error "Shutdown request failed"
+    }
+}
+
+def hubSafeShutdown() {
+    log.info "Safely shutting down hub and offload device"
+    retVal = rpcCall(remoteUri, "hub_safe_shutdown", [authCookie], 10)
+    if (retVal["respStatus"] == 0) {
+        log.info "Safe shutdown request sent successfully"
+    } else {
+        log.error "Safe shutdown request failed"
+    }    
 }
