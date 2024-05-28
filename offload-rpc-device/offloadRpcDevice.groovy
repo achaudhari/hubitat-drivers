@@ -26,6 +26,7 @@ metadata {
 
         attribute "motion", "string"
         attribute "presence", "string"
+        attribute "health", "string"
         attribute "lastUpdated", "string"
         attribute "reqTimestamp", "string"
         attribute "reqMethod", "string"
@@ -68,7 +69,7 @@ def updated() {
 }
 
 def heartbeatLoop() {
-    ping()
+    check_health()
     if (checkInterval > 0) runIn(checkInterval, "heartbeatLoop")
 }
 
@@ -80,6 +81,20 @@ def ping() {
         else
             sendEvent(name: "presence", value: "not present")
         sendEvent(name:"lastUpdated", value:(new Date().format("yyyy-MM-dd HH:mm:ss")))
+    } catch (Exception e) {
+        log.warn "Heartbeat ping failed but continuing loop..."
+    }
+}
+
+def check_health() {
+    try {
+        retVal = rpcCall(remoteUri, "check_health", [], 10)
+        if (retVal["respStatus"] == 0 && retVal["respResult"]["overall"] == "OKAY")
+            sendEvent(name: "presence", value: "present")
+        else
+            sendEvent(name: "presence", value: "not present")
+        sendEvent(name:"lastUpdated", value:(new Date().format("yyyy-MM-dd HH:mm:ss")))
+        sendEvent(name:"health", value: retVal["respResult"])
     } catch (Exception e) {
         log.warn "Heartbeat ping failed but continuing loop..."
     }
