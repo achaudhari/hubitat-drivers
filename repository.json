@@ -29,6 +29,13 @@
       "category": "Integrations",
       "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/roomba-ctrl/packageManifest.json",
       "description": "Roomba Controller"
+    },
+    {
+      "id": "b2e1c6a7-3d4e-4f8a-9c2e-1a2b3c4d5e6f",
+      "name": "Frigate Integration",
+      "category": "Integrations",
+      "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/hubitat-frigate/packageManifest.json",
+      "description": "Frigate Integration"
     }
   ]
 }

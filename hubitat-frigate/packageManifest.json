@@ -1,0 +1,33 @@
+{
+  "packageName": "Frigate Hubitat Integration",
+  "author": "Simon Mason",
+  "version": "1.0",
+  "minimumHEVersion": "2.3.0",
+  "dateReleased": "2025-12-22",
+  "drivers": [
+    {
+      "id": "8239f0da-92d9-437f-bb80-4753d234f713",
+      "name": "Frigate MQTT Bridge Device",
+      "namespace": "achaudhari",
+      "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/hubitat-frigate/FrigateMQTTBridgeDevice.groovy",
+      "required": true
+    },
+    {
+      "id": "7c4a8e1b-3f5d-4e9a-b8c2-6d7e9f0a1b2c",
+      "name": "Frigate Camera Device",
+      "namespace": "achaudhari",
+      "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/hubitat-frigate/FrigateCameraDevice.groovy",
+      "required": true
+    }
+  ],
+  "apps": [
+    {
+      "id": "4b8f2a3c-6e9d-4f7a-a1c5-8e9f0b1c2d3e",
+      "name": "Frigate Parent App",
+      "namespace": "achaudhari",
+      "location": "https://raw.githubusercontent.com/achaudhari/hubitat-drivers/main/hubitat-frigate/FrigateParentApp.groovy",
+      "required": true,
+      "oauth": false
+    }
+  ]
+}
