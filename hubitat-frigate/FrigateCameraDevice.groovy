@@ -1,9 +1,9 @@
 /**
  * Frigate Camera Device
- * 
+ *
  * Represents a single Frigate camera with motion/object detection and snapshot capabilities
  * Updates motion state based on MQTT events from Frigate; can store/display snapshots
- * 
+ *
  * Copyright 2025
  *
  * Change History:
@@ -16,7 +16,7 @@
  * 1.06 - 2025-11-08 - Added switch capability, zone-aware metadata, and support for event clips/snapshots
  * 1.07 - 2025-11-14 - Added version attribute to device state; fixed unix timestamp formatting for lastEventStart and lastEventEnd to display as readable dates
  * 1.08 - 2025-11-14 - CRITICAL PERFORMANCE FIX: Optimized event sending to only send events when values actually change, preventing LimitExceededException errors. Reduced event queue pressure by ~70% by checking current values before sending events and only resetting object detection states that need to change.
- * 
+ *
  * @author Simon Mason
  * @version 1.08
  * @date 2025-11-14
@@ -38,7 +38,7 @@ metadata {
         capability "Switch"
         capability "Refresh"
         // Removed Image Capture to avoid showing a Take button that always returns latest.jpg
-        
+
         // Custom attributes for Frigate-specific data
         attribute "personDetected", "string"
         attribute "carDetected", "string"
@@ -67,7 +67,7 @@ metadata {
         attribute "trackId", "string"
         attribute "zoneName", "string"
         attribute "version", "string"
-        
+
         // Commands
         command "refresh"
         command "updateMotionState", ["string"]
@@ -77,12 +77,12 @@ metadata {
         command "updateLastMotionSnapshotUrl", ["string"]
         command "clearDetections"
     }
-    
+
     preferences {
         section("Camera Settings") {
             input "confidenceThreshold", "number", title: "Confidence Threshold (0.0-1.0)", required: true, defaultValue: 0.5
         }
-        
+
         section("Debug") {
             input "debugLogging", "bool", title: "Enable Debug Logging", required: true, defaultValue: false
         }
@@ -101,7 +101,7 @@ def updated() {
 
 def initialize() {
     log.info "Frigate Camera Device: Initializing device"
-    
+
     // Set initial states
     sendEvent(name: "motion", value: "inactive")
     sendEvent(name: "personDetected", value: "no")
@@ -113,7 +113,6 @@ def initialize() {
     sendEvent(name: "objectType", value: "none")
     sendEvent(name: "cameraName", value: device.label.replace("Frigate ", "").replace(" ", "_").toLowerCase())
     sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss"))
-    sendEvent(name: "switch", value: "off")
     sendEvent(name: "lastSnapshotUrl", value: "")
     sendEvent(name: "lastClipUrl", value: "")
     sendEvent(name: "hasSnapshot", value: "no")
@@ -129,12 +128,12 @@ def initialize() {
     sendEvent(name: "motionScore", value: 0.0)
     sendEvent(name: "trackId", value: "")
     sendEvent(name: "version", value: "1.08")
-    
+
 }
 
 def refresh() {
     log.info "Frigate Camera Device: Refreshing device state"
-    
+
     // Update last update time
     sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss"))
 }
@@ -143,26 +142,25 @@ def updateMotionState(String state) {
     if (debugLogging) {
         log.debug "Frigate Camera Device: updateMotionState() called with state: ${state} for device: ${device.label}"
     }
-    
+
     def currentMotion = device.currentValue("motion")
-    
+
     if (debugLogging) {
         log.debug "Frigate Camera Device: Current motion state: ${currentMotion}, New state: ${state}"
     }
-    
+
     if (currentMotion != state) {
         if (debugLogging) {
             log.debug "Frigate Camera Device: State changed, sending motion event: ${state}"
         }
-        
+
         sendEvent(name: "motion", value: state)
-        sendEvent(name: "switch", value: (state == "active") ? "on" : "off")
         sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss"))
-        
+
         if (state == "active") {
             log.info "Frigate Camera Device: Motion detected on ${device.label}"
         }
-        
+
         if (debugLogging) {
             log.debug "Frigate Camera Device: Motion state updated successfully"
         }
@@ -175,27 +173,25 @@ def updateMotionState(String state) {
 }
 
 def on() {
-    if (debugLogging) {
-        log.debug "Frigate Camera Device: on() called, forcing motion active"
-    }
-    updateMotionState("active")
+    log.info "Frigate Camera Device: on(): Enabling ${device.label}"
+    boolean success = !!(parent?.cameraEnable(device.deviceNetworkId))
+    sendEvent(name: "switch", value: success ? "on" : "off")
 }
 
 def off() {
-    if (debugLogging) {
-        log.debug "Frigate Camera Device: off() called, forcing motion inactive"
-    }
-    updateMotionState("inactive")
+    log.info "Frigate Camera Device: off(): Disabling ${device.label}"
+    parent?.cameraDisable(device.deviceNetworkId)
+    sendEvent(name: "switch", value: "off")
 }
 
 def updateObjectDetection(String objectType, Number confidence) {
     if (debugLogging) {
         log.debug "Frigate Camera Device: updateObjectDetection() called - Object: ${objectType}, Confidence: ${confidence} on device: ${device.label}"
     }
-    
+
     // Track when we last got a detection
     state.lastDetectionTime = now()
-    
+
     BigDecimal numericConfidence = 0.0G
     try {
         if (confidence != null) {
@@ -210,28 +206,28 @@ def updateObjectDetection(String objectType, Number confidence) {
     if (currentConfidence != numericConfidence) {
         sendEvent(name: "confidence", value: numericConfidence, isStateChange: true)
     }
-    
+
     def currentObjectType = device.currentValue("objectType")
     if (currentObjectType != objectType) {
         sendEvent(name: "objectType", value: objectType, isStateChange: true)
     }
-    
+
     def detectionTime = new Date().format("yyyy-MM-dd HH:mm:ss")
     sendEvent(name: "lastDetection", value: detectionTime, isStateChange: true)
     sendEvent(name: "lastUpdate", value: detectionTime, isStateChange: false) // Always update timestamp
-    
+
     if (debugLogging) {
         log.debug "Frigate Camera Device: Updated confidence, objectType, lastDetection, lastUpdate events"
     }
-    
+
     // Update specific object detection states (only send events for changes to reduce queue pressure)
     def objectStates = [
         "person": "personDetected",
-        "car": "carDetected", 
+        "car": "carDetected",
         "dog": "dogDetected",
         "cat": "catDetected"
     ]
-    
+
     // Only reset object states that are currently "yes" and not the detected object
     objectStates.each { objType, attrName ->
         def currentValue = device.currentValue(attrName)
@@ -240,7 +236,7 @@ def updateObjectDetection(String objectType, Number confidence) {
             sendEvent(name: attrName, value: "no", isStateChange: true)
         }
     }
-    
+
     // Set the detected object to "yes" (only if it's not already "yes")
     if (objectStates.containsKey(objectType)) {
         def attrName = objectStates[objectType]
@@ -249,7 +245,7 @@ def updateObjectDetection(String objectType, Number confidence) {
             sendEvent(name: attrName, value: "yes", isStateChange: true)
             log.info "Frigate Camera Device: ${objectType} detected on ${device.label} with confidence ${numericConfidence}"
         }
-        
+
         if (debugLogging) {
             log.debug "Frigate Camera Device: Set ${objectType} detection state to 'yes'"
         }
@@ -258,13 +254,13 @@ def updateObjectDetection(String objectType, Number confidence) {
             log.debug "Frigate Camera Device: Object type '${objectType}' not in supported list: ${objectStates.keySet()}"
         }
     }
-    
+
     // Update motion state if confidence is above threshold
     def threshold = confidenceThreshold ?: 0.5
     if (debugLogging) {
         log.debug "Frigate Camera Device: Checking confidence ${numericConfidence} against threshold ${threshold}"
     }
-    
+
     def thresholdValue = 0.0G
     try {
         thresholdValue = new BigDecimal(threshold.toString())
@@ -278,7 +274,7 @@ def updateObjectDetection(String objectType, Number confidence) {
         }
         updateMotionState("active")
     }
-    
+
     if (debugLogging) {
         log.debug "Frigate Camera Device: updateObjectDetection() completed"
     }
@@ -340,7 +336,7 @@ def updateEventMetadata(Map data) {
         log.debug "Frigate Camera Device: updateEventMetadata() called with data: ${data}"
     }
     def nowTs = new Date().format("yyyy-MM-dd HH:mm:ss")
-    
+
     // Only send events when values actually change to reduce event queue pressure
     if (data.cameraName) {
         def current = device.currentValue("cameraName")
@@ -467,7 +463,7 @@ def updateEventMetadata(Map data) {
             sendEvent(name: "trackId", value: newTrackId, isStateChange: true)
         }
     }
-    
+
     if (data.hasSnapshot != null) {
         def newValue = data.hasSnapshot ? "yes" : "no"
         def current = device.currentValue("hasSnapshot")
@@ -499,7 +495,7 @@ def updateEventMetadata(Map data) {
     if (data.lastMotionSnapshotUrl) {
         updateLastMotionSnapshotUrl(data.lastMotionSnapshotUrl)
     }
-    
+
     // Always update lastUpdate timestamp (but use isStateChange: false to reduce queue pressure)
     sendEvent(name: "lastUpdate", value: nowTs, isStateChange: false)
 }
