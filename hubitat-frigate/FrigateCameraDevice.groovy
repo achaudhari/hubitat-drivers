@@ -40,32 +40,17 @@ metadata {
         // Removed Image Capture to avoid showing a Take button that always returns latest.jpg
 
         // Custom attributes for Frigate-specific data
-        attribute "personDetected", "string"
-        attribute "carDetected", "string"
-        attribute "dogDetected", "string"
-        attribute "catDetected", "string"
         attribute "lastDetection", "string"
         attribute "confidence", "number"
         attribute "objectType", "string"
         attribute "cameraName", "string"
         attribute "lastUpdate", "string"
-        attribute "latestSnapshotUrl", "string"
-        attribute "lastMotionSnapshotUrl", "string"
-        attribute "lastSnapshotUrl", "string"
-        attribute "lastClipUrl", "string"
-        attribute "hasSnapshot", "string"
-        attribute "hasClip", "string"
-        attribute "currentZones", "string"
-        attribute "enteredZones", "string"
-        attribute "previousZones", "string"
         attribute "lastEventId", "string"
         attribute "lastEventLabel", "string"
         attribute "lastEventConfidence", "number"
         attribute "lastEventStart", "string"
         attribute "lastEventEnd", "string"
         attribute "motionScore", "number"
-        attribute "trackId", "string"
-        attribute "zoneName", "string"
         attribute "version", "string"
 
         // Commands
@@ -73,8 +58,6 @@ metadata {
         command "updateMotionState", ["string"]
         command "updateObjectDetection", ["string", "number"]
         command "getStats"
-        command "updateLatestSnapshotUrl", ["string"]
-        command "updateLastMotionSnapshotUrl", ["string"]
         command "clearDetections"
     }
 
@@ -104,29 +87,17 @@ def initialize() {
 
     // Set initial states
     sendEvent(name: "motion", value: "inactive")
-    sendEvent(name: "personDetected", value: "no")
-    sendEvent(name: "carDetected", value: "no")
-    sendEvent(name: "dogDetected", value: "no")
-    sendEvent(name: "catDetected", value: "no")
     sendEvent(name: "lastDetection", value: "Never")
     sendEvent(name: "confidence", value: 0.0)
     sendEvent(name: "objectType", value: "none")
     sendEvent(name: "cameraName", value: device.label.replace("Frigate ", "").replace(" ", "_").toLowerCase())
     sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss"))
-    sendEvent(name: "lastSnapshotUrl", value: "")
-    sendEvent(name: "lastClipUrl", value: "")
-    sendEvent(name: "hasSnapshot", value: "no")
-    sendEvent(name: "hasClip", value: "no")
-    sendEvent(name: "currentZones", value: "none")
-    sendEvent(name: "enteredZones", value: "none")
-    sendEvent(name: "previousZones", value: "none")
     sendEvent(name: "lastEventId", value: "")
     sendEvent(name: "lastEventLabel", value: "")
     sendEvent(name: "lastEventConfidence", value: 0.0)
     sendEvent(name: "lastEventStart", value: "")
     sendEvent(name: "lastEventEnd", value: "")
     sendEvent(name: "motionScore", value: 0.0)
-    sendEvent(name: "trackId", value: "")
     sendEvent(name: "version", value: "1.08")
 
 }
@@ -220,41 +191,6 @@ def updateObjectDetection(String objectType, Number confidence) {
         log.debug "Frigate Camera Device: Updated confidence, objectType, lastDetection, lastUpdate events"
     }
 
-    // Update specific object detection states (only send events for changes to reduce queue pressure)
-    def objectStates = [
-        "person": "personDetected",
-        "car": "carDetected",
-        "dog": "dogDetected",
-        "cat": "catDetected"
-    ]
-
-    // Only reset object states that are currently "yes" and not the detected object
-    objectStates.each { objType, attrName ->
-        def currentValue = device.currentValue(attrName)
-        if (objType != objectType && currentValue == "yes") {
-            // This object was detected before but isn't now - reset it
-            sendEvent(name: attrName, value: "no", isStateChange: true)
-        }
-    }
-
-    // Set the detected object to "yes" (only if it's not already "yes")
-    if (objectStates.containsKey(objectType)) {
-        def attrName = objectStates[objectType]
-        def currentValue = device.currentValue(attrName)
-        if (currentValue != "yes") {
-            sendEvent(name: attrName, value: "yes", isStateChange: true)
-            log.info "Frigate Camera Device: ${objectType} detected on ${device.label} with confidence ${numericConfidence}"
-        }
-
-        if (debugLogging) {
-            log.debug "Frigate Camera Device: Set ${objectType} detection state to 'yes'"
-        }
-    } else {
-        if (debugLogging) {
-            log.debug "Frigate Camera Device: Object type '${objectType}' not in supported list: ${objectStates.keySet()}"
-        }
-    }
-
     // Update motion state if confidence is above threshold
     def threshold = confidenceThreshold ?: 0.5
     if (debugLogging) {
@@ -286,9 +222,6 @@ def clearDetections() {
     if (debugLogging) {
         log.debug "Frigate Camera Device: clearDetections() called for ${device.label}"
     }
-    ["personDetected", "carDetected", "dogDetected", "catDetected"].each { attr ->
-        sendEvent(name: attr, value: "no")
-    }
     sendEvent(name: "objectType", value: "none")
     sendEvent(name: "confidence", value: 0.0)
     updateMotionState("inactive")
@@ -307,25 +240,15 @@ def getCameraName() {
 // Parent calls this to update the latest snapshot URL (latest.jpg)
 def updateLatestSnapshotUrl(String imageUrl) {
     if (debugLogging) {
-        log.debug "Frigate Camera Device: updateLatestSnapshotUrl() called for ${device.label} - url: ${imageUrl}"
+        log.debug "Frigate Camera Device: updateLatestSnapshotUrl() STUBBED OUT"
     }
-    if (imageUrl) {
-        sendEvent(name: "latestSnapshotUrl", value: imageUrl)
-    }
-    sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss"))
 }
 
 // Parent calls this on motion start to store the event snapshot URL and reflect it in the image tile
 def updateLastMotionSnapshotUrl(String imageUrl) {
     if (debugLogging) {
-        log.debug "Frigate Camera Device: updateLastMotionSnapshotUrl() called for ${device.label} - url: ${imageUrl}"
+        log.debug "Frigate Camera Device: updateLastMotionSnapshotUrl() STUBBED OUT"
     }
-    if (imageUrl) {
-        sendEvent(name: "lastMotionSnapshotUrl", value: imageUrl)
-        // Copy to generic image attribute so dashboards show the event-time snapshot
-        sendEvent(name: "image", value: imageUrl)
-    }
-    sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss"))
 }
 
 def updateEventMetadata(Map data) {
@@ -342,36 +265,6 @@ def updateEventMetadata(Map data) {
         def current = device.currentValue("cameraName")
         if (current != data.cameraName) {
             sendEvent(name: "cameraName", value: data.cameraName, isStateChange: true)
-        }
-    }
-    if (data.zoneName) {
-        def current = device.currentValue("zoneName")
-        if (current != data.zoneName) {
-            sendEvent(name: "zoneName", value: data.zoneName, isStateChange: true)
-        }
-    }
-    if (data.currentZones != null) {
-        def value = data.currentZones instanceof Collection ? data.currentZones.join(",") : data.currentZones.toString()
-        def finalValue = value ?: "none"
-        def current = device.currentValue("currentZones")
-        if (current != finalValue) {
-            sendEvent(name: "currentZones", value: finalValue, isStateChange: true)
-        }
-    }
-    if (data.enteredZones != null) {
-        def value = data.enteredZones instanceof Collection ? data.enteredZones.join(",") : data.enteredZones.toString()
-        def finalValue = value ?: "none"
-        def current = device.currentValue("enteredZones")
-        if (current != finalValue) {
-            sendEvent(name: "enteredZones", value: finalValue, isStateChange: true)
-        }
-    }
-    if (data.previousZones != null) {
-        def value = data.previousZones instanceof Collection ? data.previousZones.join(",") : data.previousZones.toString()
-        def finalValue = value ?: "none"
-        def current = device.currentValue("previousZones")
-        if (current != finalValue) {
-            sendEvent(name: "previousZones", value: finalValue, isStateChange: true)
         }
     }
     if (data.eventId) {
@@ -455,45 +348,6 @@ def updateEventMetadata(Map data) {
                 sendEvent(name: "motionScore", value: 0.0, isStateChange: true)
             }
         }
-    }
-    if (data.trackId != null) {
-        def current = device.currentValue("trackId")
-        def newTrackId = data.trackId.toString()
-        if (current != newTrackId) {
-            sendEvent(name: "trackId", value: newTrackId, isStateChange: true)
-        }
-    }
-
-    if (data.hasSnapshot != null) {
-        def newValue = data.hasSnapshot ? "yes" : "no"
-        def current = device.currentValue("hasSnapshot")
-        if (current != newValue) {
-            sendEvent(name: "hasSnapshot", value: newValue, isStateChange: true)
-        }
-    }
-    if (data.hasClip != null) {
-        def newValue = data.hasClip ? "yes" : "no"
-        def current = device.currentValue("hasClip")
-        if (current != newValue) {
-            sendEvent(name: "hasClip", value: newValue, isStateChange: true)
-        }
-    }
-    if (data.snapshotUrl) {
-        def current = device.currentValue("lastSnapshotUrl")
-        if (current != data.snapshotUrl) {
-            sendEvent(name: "lastSnapshotUrl", value: data.snapshotUrl, isStateChange: true)
-            sendEvent(name: "latestSnapshotUrl", value: data.snapshotUrl, isStateChange: true)
-            sendEvent(name: "image", value: data.snapshotUrl, isStateChange: true)
-        }
-    }
-    if (data.clipUrl) {
-        def current = device.currentValue("lastClipUrl")
-        if (current != data.clipUrl) {
-            sendEvent(name: "lastClipUrl", value: data.clipUrl, isStateChange: true)
-        }
-    }
-    if (data.lastMotionSnapshotUrl) {
-        updateLastMotionSnapshotUrl(data.lastMotionSnapshotUrl)
     }
 
     // Always update lastUpdate timestamp (but use isStateChange: false to reduce queue pressure)
