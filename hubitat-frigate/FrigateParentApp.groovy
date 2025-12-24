@@ -8,7 +8,7 @@
  *
  * Change History:
  * 1.00 - Initial release with automatic camera discovery via MQTT stats, real-time motion detection via MQTT events, object detection support (person, car, dog, cat), confidence scoring and filtering, motion timeout handling, HTTP API integration for snapshots and stats
- * 1.01 - CRITICAL FIX: Fixed issue where camera devices were not showing events. Added event tracking to prevent duplicate processing, improved event filtering to only process start events, enhanced API structure handling for both MQTT and HTTP API formats, changed polling to fetch last 10 events instead of 1, added HTTP Basic Auth headers to all API requests, enhanced error logging with stack traces
+ * 1.01 - CRITICAL FIX: Fixed issue where camera devices were not showing events. Added event tracking to prevent duplicate processing, improved event filtering to only process start events, enhanced API structure handling for both MQTT and HTTP API formats, changed polling to fetch last 10 events instead of 1, added authentication headers to all API requests, enhanced error logging with stack traces
  * 1.02 - MAJOR REFACTOR: Replaced HTTP polling with native MQTT via interfaces.mqtt for real-time event delivery. Now uses true MQTT subscriptions to frigate/events and frigate/stats topics, eliminating 5-second polling delays. Added parse() and mqttClientStatus() methods for automatic message handling. Improved connection management with automatic reconnection. Events now arrive instantly instead of up to 5 seconds late.
  * 1.03 - CRITICAL FIX: Fixed null pointer error when using interfaces.mqtt in parent apps (interfaces.mqtt is only available in device drivers). Added automatic fallback to HTTP polling when MQTT is not available. All MQTT operations now check for availability before use. HTTP polling restored with improved event handling and 5-second interval.
  * 1.04 - MAJOR ARCHITECTURE CHANGE: Created Frigate MQTT Bridge Device driver to handle MQTT connectivity (parent apps cannot use interfaces.mqtt). Parent app now creates and manages a bridge device that connects to MQTT and forwards messages. Removed all HTTP event polling code. HTTP API now only used for snapshots and camera config checks. Real-time MQTT events via bridge device.
@@ -18,10 +18,11 @@
  * 1.08 - 2025-11-08 - Added zone child devices, alert/motion metadata, and richer event tracking
  * 1.09 - 2025-11-08 - Guarded event/zone state maps during MQTT processing to prevent null pointer exceptions
  * 1.10 - 2025-11-14 - PERFORMANCE: Replaced full JSON parsing with selective field extraction using regex to avoid parsing 60KB+ payloads including unused path_data arrays. Removed double parsing in MQTT bridge device. Reduces memory usage by ~66% and processing time by ~90% for large events. Minor cleanup: removed unnecessary bridge device refresh call in updated() method.
+ * 1.11 - 2025-12-23 - AUTHENTICATION: Replaced HTTP Basic Authentication with Frigate's native JWT Bearer token authentication for API calls. Added automatic JWT token acquisition via login endpoint. Improved security by using proper Frigate authentication method.
  *
  * @author Simon Mason
- * @version 1.10
- * @date 2025-11-14
+ * @version 1.11
+ * @date 2025-12-23
  */
 
 private boolean zonesEnabled() {
@@ -500,9 +501,9 @@ preferences {
 
         section("Frigate Server") {
             input "frigateServer", "text", title: "Frigate Server IP", required: true
-            input "frigatePort", "number", title: "Frigate Port", required: true
-            input "frigateUsername", "text", title: "Frigate Username", required: false
-            input "frigatePassword", "password", title: "Frigate Password", required: false
+            input "frigatePort", "number", title: "Frigate Port (use 8971 for authenticated access)", required: true, defaultValue: 8971
+            input "frigateUsername", "text", title: "Frigate Username (for JWT authentication)", required: false
+            input "frigatePassword", "password", title: "Frigate Password (for JWT authentication)", required: false
         }
 
         section("Debug") {
@@ -914,16 +915,98 @@ def removeObsoleteCameraDevices(List currentCameras) {
     }
 }
 
+// Get or refresh JWT token for Frigate API authentication
+private String getJWTToken() {
+    // Check if we have a valid cached token
+    if (state.jwtToken && state.jwtExpiration) {
+        def now = new Date().getTime() / 1000
+        // Refresh token if it expires in less than 5 minutes
+        if (state.jwtExpiration > now + 300) {
+            if (debugLogging) {
+                log.debug "Frigate Parent App: Using cached JWT token"
+            }
+            return state.jwtToken
+        }
+    }
+
+    // Need to get a new token
+    if (!frigateUsername || !frigatePassword) {
+        log.warn "Frigate Parent App: No credentials configured for JWT authentication"
+        return null
+    }
+
+    try {
+        def loginUrl = "http://${frigateServer}:${frigatePort}/api/login"
+        def body = groovy.json.JsonOutput.toJson([
+            user: frigateUsername,
+            password: frigatePassword
+        ])
+
+        if (debugLogging) {
+            log.debug "Frigate Parent App: Requesting new JWT token from ${loginUrl}"
+        }
+
+        def token = null
+        httpPost([uri: loginUrl, body: body, contentType: "application/json", requestContentType: "application/json"]) { response ->
+            if (response.status == 200) {
+                // Extract JWT token from Set-Cookie header
+                def cookies = response.headers['Set-Cookie']
+                if (cookies) {
+                    def cookieList = cookies instanceof List ? cookies : [cookies]
+                    cookieList.each { cookie ->
+                        // Look for frigate_token cookie
+                        def match = cookie.toString() =~ /frigate_token=([^;]+)/
+                        if (match) {
+                            token = match[0][1]
+                        }
+                    }
+                }
+
+                if (token) {
+                    // Cache the token (default session is 24 hours)
+                    state.jwtToken = token
+                    // Set expiration to 23 hours from now to ensure we refresh before it expires
+                    state.jwtExpiration = (new Date().getTime() / 1000) + (23 * 3600)
+                    log.info "Frigate Parent App: Successfully obtained JWT token"
+                    return token
+                } else {
+                    log.error "Frigate Parent App: No JWT token found in login response"
+                }
+            } else {
+                log.error "Frigate Parent App: Login failed with status: ${response.status}"
+            }
+        }
+        return token
+    } catch (Exception e) {
+        log.error "Frigate Parent App: Error obtaining JWT token: ${e.message}"
+        state.jwtToken = null
+        state.jwtExpiration = null
+        return null
+    }
+}
+
+// Get authentication headers for Frigate API calls
+private Map getAuthHeaders() {
+    def headers = [:]
+
+    if (frigateUsername && frigatePassword) {
+        def token = getJWTToken()
+        if (token) {
+            headers = ["Authorization": "Bearer ${token}"]
+        } else {
+            log.warn "Frigate Parent App: Could not obtain JWT token, requests may fail"
+        }
+    }
+
+    return headers
+}
+
 def refreshStats() {
     log.info "Frigate Parent App: Refreshing stats and config"
 
     try {
-        // Prepare authentication headers
-        def headers = [:]
-        if (frigateUsername && frigatePassword) {
-            def auth = "${frigateUsername}:${frigatePassword}".bytes.encodeBase64().toString()
-            headers = ["Authorization": "Basic ${auth}"]
-        }
+        // Get authentication headers (JWT Bearer token)
+        def headers = getAuthHeaders()
 
         // Get camera configuration to check motion detection capabilities
         def configUrl = "http://${frigateServer}:${frigatePort}/api/config"
@@ -1002,11 +1085,8 @@ def getCameraStats(String cameraName) {
     log.info "Frigate Parent App: Requesting stats for camera: ${cameraName}"
 
     try {
-        def headers = [:]
-        if (frigateUsername && frigatePassword) {
-            def auth = "${frigateUsername}:${frigatePassword}".bytes.encodeBase64().toString()
-            headers = ["Authorization": "Basic ${auth}"]
-        }
+        // Get authentication headers (JWT Bearer token)
+        def headers = getAuthHeaders()
 
         def url = "http://${frigateServer}:${frigatePort}/api/stats"
         httpGet([uri: url, headers: headers]) { response ->
