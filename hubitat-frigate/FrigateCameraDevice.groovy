@@ -40,18 +40,14 @@ metadata {
         // Removed Image Capture to avoid showing a Take button that always returns latest.jpg
 
         // Custom attributes for Frigate-specific data
-        attribute "lastDetection", "string"
         attribute "confidence", "number"
         attribute "objectType", "string"
         attribute "cameraName", "string"
         attribute "lastUpdate", "string"
-        attribute "lastEventId", "string"
-        attribute "lastEventLabel", "string"
+        attribute "lastDetection", "string"
         attribute "lastEventConfidence", "number"
         attribute "lastEventStart", "string"
         attribute "lastEventEnd", "string"
-        attribute "motionScore", "number"
-        attribute "version", "string"
 
         // Commands
         command "refresh"
@@ -64,6 +60,7 @@ metadata {
     preferences {
         section("Camera Settings") {
             input "confidenceThreshold", "number", title: "Confidence Threshold (0.0-1.0)", required: true, defaultValue: 0.5
+            input "trackedObjectTypes", "text", title: "Tracked Object Types (comma-separated, e.g., person,car,dog,cat or 'all' for all objects)", required: false, defaultValue: "person,car,dog,cat"
         }
 
         section("Debug") {
@@ -92,13 +89,9 @@ def initialize() {
     sendEvent(name: "objectType", value: "none")
     sendEvent(name: "cameraName", value: device.label.replace("Frigate ", "").replace(" ", "_").toLowerCase())
     sendEvent(name: "lastUpdate", value: new Date().format("yyyy-MM-dd HH:mm:ss"))
-    sendEvent(name: "lastEventId", value: "")
-    sendEvent(name: "lastEventLabel", value: "")
     sendEvent(name: "lastEventConfidence", value: 0.0)
     sendEvent(name: "lastEventStart", value: "")
     sendEvent(name: "lastEventEnd", value: "")
-    sendEvent(name: "motionScore", value: 0.0)
-    sendEvent(name: "version", value: "1.08")
 
 }
 
@@ -158,6 +151,14 @@ def off() {
 def updateObjectDetection(String objectType, Number confidence) {
     if (debugLogging) {
         log.debug "Frigate Camera Device: updateObjectDetection() called - Object: ${objectType}, Confidence: ${confidence} on device: ${device.label}"
+    }
+
+    // Filter: Only process tracked object types
+    if (!isTrackedObjectType(objectType)) {
+        if (debugLogging) {
+            log.debug "Frigate Camera Device: Object type '${objectType}' not in tracked list, skipping"
+        }
+        return
     }
 
     // Track when we last got a detection
@@ -237,6 +238,22 @@ def getCameraName() {
     return device.currentValue("cameraName") ?: device.label.replace("Frigate ", "").replace(" ", "_").toLowerCase()
 }
 
+// Helper method to check if an object type should be tracked
+private boolean isTrackedObjectType(String objectType) {
+    if (!objectType) return false
+    
+    def trackedTypes = settings?.trackedObjectTypes?.toString() ?: "person,car,dog,cat"
+    
+    // Special value "all" allows all object types
+    if (trackedTypes.trim().toLowerCase() == "all") {
+        return true
+    }
+    
+    def typeList = trackedTypes.split(",").collect { it.trim().toLowerCase() }
+    
+    return typeList.contains(objectType.toLowerCase())
+}
+
 // Parent calls this to update the latest snapshot URL (latest.jpg)
 def updateLatestSnapshotUrl(String imageUrl) {
     if (debugLogging) {
@@ -258,6 +275,15 @@ def updateEventMetadata(Map data) {
     if (debugLogging) {
         log.debug "Frigate Camera Device: updateEventMetadata() called with data: ${data}"
     }
+    
+    // Filter: Skip metadata updates for untracked object types
+    if (data.label && !isTrackedObjectType(data.label)) {
+        if (debugLogging) {
+            log.debug "Frigate Camera Device: Label '${data.label}' not tracked, skipping metadata update"
+        }
+        return
+    }
+    
     def nowTs = new Date().format("yyyy-MM-dd HH:mm:ss")
 
     // Only send events when values actually change to reduce event queue pressure
@@ -265,18 +291,6 @@ def updateEventMetadata(Map data) {
         def current = device.currentValue("cameraName")
         if (current != data.cameraName) {
             sendEvent(name: "cameraName", value: data.cameraName, isStateChange: true)
-        }
-    }
-    if (data.eventId) {
-        def current = device.currentValue("lastEventId")
-        if (current != data.eventId) {
-            sendEvent(name: "lastEventId", value: data.eventId, isStateChange: true)
-        }
-    }
-    if (data.label != null) {
-        def current = device.currentValue("lastEventLabel")
-        if (current != data.label) {
-            sendEvent(name: "lastEventLabel", value: data.label, isStateChange: true)
         }
     }
     if (data.confidence != null) {
@@ -333,20 +347,6 @@ def updateEventMetadata(Map data) {
         def current = device.currentValue("lastEventEnd")
         if (current != endTimeValue) {
             sendEvent(name: "lastEventEnd", value: endTimeValue, isStateChange: true)
-        }
-    }
-    if (data.motionScore != null) {
-        try {
-            def newScore = new BigDecimal(data.motionScore.toString())
-            def current = device.currentValue("motionScore")
-            if (current != newScore) {
-                sendEvent(name: "motionScore", value: newScore, isStateChange: true)
-            }
-        } catch (Exception ignored) {
-            def current = device.currentValue("motionScore")
-            if (current != 0.0) {
-                sendEvent(name: "motionScore", value: 0.0, isStateChange: true)
-            }
         }
     }
 

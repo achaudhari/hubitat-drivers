@@ -1,7 +1,7 @@
 {
   "packageName": "Frigate Hubitat Integration",
   "author": "Simon Mason",
-  "version": "1.3",
+  "version": "1.4",
   "minimumHEVersion": "2.3.0",
   "dateReleased": "2025-12-22",
   "drivers": [
